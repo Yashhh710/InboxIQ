@@ -1,0 +1,17 @@
+{
+  "name": "orchestrate-dashboard-full",
+  "version": "1.0.0",
+  "description": "HackerRank Orchestrate - AI Message Notification Router",
+  "scripts": {
+    "dev": "concurrently \"npm run backend:dev\" \"npm run frontend:dev\"",
+    "backend:dev": "cd backend && python main.py",
+    "frontend:dev": "cd frontend && npm run dev",
+    "start": "npm run dev",
+    "backend:install": "cd backend && pip install -r requirements.txt",
+    "frontend:install": "cd frontend && npm install",
+    "install:all": "npm run backend:install && npm run frontend:install"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

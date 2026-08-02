@@ -1,130 +1,121 @@
-# HackerRank Orchestrate
+# InboxIQ
 
-Starter repository for the **HackerRank Orchestrate** 24-hour hackathon.
+An intelligent message triage and notification routing system. It analyzes incoming messages (personal, business, group, promotional, etc.) and decides whether to **notify**, **digest**, or **mute** them — with a full analytics dashboard to inspect the decisions.
 
-## Message Notification Router
+- **Live app**: https://inbox-iq-hack.vercel.app/
+- **Live API**: https://inboxiq-9903.onrender.com
 
-Build an AI-powered system for WhatsApp that decides which messages deserve immediate attention, which should wait, and which should be muted.
+## Tech Stack
 
-The system must reason over multimodal messages, including text messages, image posters/screenshots, and voice notes.
+| Layer | Tech |
+|---|---|
+| Frontend | React + Vite + TypeScript, Tailwind CSS, Recharts, Framer Motion |
+| Backend | FastAPI (Python), Pydantic |
+| Data | CSV-based dataset (no database) |
+| Frontend hosting | Vercel |
+| Backend hosting | Render |
 
-WhatsApp is noisy. A user can receive family chats, society notices, school updates, co-worker messages, business account promotions, image posters, voice notes, and scams in the same message stream. Treating every message the same creates two bad outcomes: important messages get missed, and unwanted or risky messages interrupt the user.
+## Project Structure
 
-Read [`problem_statement.md`](./problem_statement.md) for the full task spec, input/output schema, allowed values, and submission format.
-
----
-
-## Repository Layout
-
-```text
-.
-├── AGENTS.md                         # Rules for AI coding tools + transcript logging
-├── problem_statement.md              # Full challenge statement
-├── README.md                         # You are here
-└── dataset/
-    ├── messages.csv                  # Messages to route
-    ├── output.csv                    # Blank submission template
-    ├── sample_messages.csv           # Solved examples
-    ├── users.csv                     # User notification behavior
-    ├── groups.csv                    # Group metadata
-    ├── group_members.csv             # User-group relationships
-    ├── business_accounts.csv         # Business sender metadata
-    ├── user_business_history.csv     # User-business history
-    ├── message_history.csv           # Historical messages
-    ├── message_events.csv            # User reactions to historical messages
-    ├── images.csv                    # Image IDs and media file paths
-    ├── voice_notes.csv               # Voice note IDs and media file paths
-    ├── daily_notification_summary.csv
-    └── media/
-        ├── images/
-        └── audio/
+```
+InboxIQ/
+├── dataset/              # CSV data (messages, users, groups, businesses, etc.)
+└── code/
+    ├── main.py            # Standalone script — runs the prediction pipeline over the dataset
+    ├── engines/           # Core logic: reasoning, scam/spam detection, routing, etc.
+    ├── backend/           # FastAPI app (serves the dashboard's API)
+    │   ├── main.py
+    │   └── requirements.txt
+    └── frontend/          # React + Vite dashboard
+        ├── src/
+        └── package.json
 ```
 
----
+## Running Locally
 
-## What You Need to Build
+### 1. Backend
 
-For every row in `dataset/messages.csv`, produce one row in `output.csv` with:
+```bash
+cd code/backend
+python3 -m venv venv
+source venv/bin/activate        # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+python3 main.py
+```
 
-| Column | Meaning |
-|---|---|
-| `message_id` | Incoming message ID |
-| `action` | One of `notify`, `digest`, or `mute` |
-| `message_type` | Best-fit message category |
-| `reason` | Short human-readable explanation |
-| `confidence` | Number from `0` to `1` |
-| `evidence_message_ids` | Historical message IDs used as evidence; write `none` if there is no useful evidence |
+Runs on `http://localhost:8000`. Verify with:
+```bash
+curl http://localhost:8000/health
+```
 
-Your system should make personalized decisions using the provided message, user, group, business, media, and historical interaction data.
-For image and voice-note messages, `images.csv` and `voice_notes.csv` only provide file paths; your system should inspect the media files themselves.
+> **Note (macOS with Python 3.13+/3.14):** `pydantic-core==2.14.1` has no prebuilt wheel for very new Python versions and will fail to compile. If you hit this, create the venv with an older Python instead, e.g. `python3.11 -m venv venv` (install via `brew install python@3.11` if needed).
 
----
+### 2. Frontend
 
-## Suggested Workflow
+In a separate terminal:
+```bash
+cd code/frontend
+npm install
+npm run dev
+```
 
-1. Inspect `dataset/sample_messages.csv` to understand the expected output format.
-2. Load `dataset/messages.csv` and all relevant context files.
-3. Build your routing system using any approach: LLMs, retrieval, rules, classifiers, agents, or hybrids.
-4. Write predictions to `output.csv`.
-5. Evaluate your approach on the solved sample rows before submitting.
+Opens on `http://localhost:5173` and talks to the backend via `VITE_API_URL` (set in `code/frontend/.env`, defaults to `http://localhost:8000`).
 
-You may use any language or runtime. Python, JavaScript, and TypeScript are all reasonable choices.
+### 3. (Optional) Standalone prediction pipeline
 
----
+To just run the core engine over the dataset without the API/dashboard:
+```bash
+cd code
+python3 main.py
+```
+Writes results to `dataset/output.csv`.
 
-## Requirements
+## API Reference
 
-Your solution must:
+Base URL: backend root (e.g. `https://inboxiq-9903.onrender.com`)
 
-- be runnable from the terminal
-- read the provided files from `dataset/`
-- produce a valid `output.csv`
-- include one prediction for every `message_id` in `dataset/messages.csv`
-- not use organizer-only files or hardcoded labels
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/health` | Health check |
+| GET | `/messages` | List messages (filterable by action/type, paginated) |
+| GET | `/messages/{message_id}` | Single message detail + prediction |
+| GET | `/dashboard` | Summary stats for the dashboard home |
+| GET | `/dashboard/charts` | Chart data for the dashboard |
+| GET | `/analytics` | Analytics data (senders, groups, trends, distributions) |
+| POST | `/predict` | Run the model on a single message payload |
+| POST | `/run-model` | Re-run the full model over the dataset |
+| GET | `/history` | Notification history |
+| GET | `/users` | User list |
+| GET | `/groups` | Group list |
+| GET | `/directory` | Group/business ID → display name lookup |
 
-If you use API keys or secrets, read them from environment variables. Never hardcode secrets in the repo.
+There's no route at `/` — hitting the bare backend URL in a browser will correctly return `{"detail":"Not Found"}`.
 
----
+## Deployment
 
-## Evaluation
+### Backend → Render
 
-Your `output.csv` will be compared against hidden ground-truth labels.
+1. New Web Service → connect this repo, branch `main`
+2. **Root Directory**: `code/backend`
+3. **Build Command**: `pip install -r requirements.txt`
+4. **Start Command**: `uvicorn main:app --host 0.0.0.0 --port $PORT`
+5. **Environment Variable**: `PYTHON_VERSION=3.11.9` (avoids a `pydantic-core` build failure on newer Python versions Render defaults to)
+6. Deploy, then verify at `https://<your-service>.onrender.com/health`
 
-The scoring will consider:
+> Free tier spins down after inactivity — first request after idling can take ~30–50s to wake up.
 
-- correctness of `action`
-- correctness of `message_type`
-- usefulness and consistency of `reason`
-- whether `evidence_message_ids` point to relevant historical messages
-- reasonable confidence calibration
+### Frontend → Vercel
 
-Strong systems will combine retrieval, structured metadata, behavioral history, safety checks, OCR/ASR handling, and contextual reasoning.
+1. New Project → import this repo
+2. **Root Directory**: `code/frontend`
+3. Framework preset: **Vite** (auto-detected)
+4. **Environment Variable**:
+   - `VITE_API_URL` = your Render backend URL (e.g. `https://inboxiq-9903.onrender.com`)
+5. Deploy
 
----
+> Vite bakes env vars in at build time — if you add/change `VITE_API_URL` after the first deploy, you must **redeploy** for it to take effect.
 
-## Chat Transcript Logging
+## Known Notes
 
-This repo includes an [`AGENTS.md`](./AGENTS.md) file for AI coding tools. It asks compatible tools to append conversation summaries to:
-
-| Platform | Path |
-|---|---|
-| macOS / Linux | `$HOME/hackerrank_orchestrate_august26/log.txt` |
-| Windows | `%USERPROFILE%\hackerrank_orchestrate_august26\log.txt` |
-
-Upload this log as your chat transcript at submission time. Do not paste secrets into the chat.
-
----
-
-## Submission
-
-Submit the following files as instructed by HackerRank:
-
-1. **Code zip**: full runnable solution, prompts/configs, README, and any evaluation files.
-2. **Predictions CSV**: final `output.csv` for all rows in `dataset/messages.csv`.
-3. **Chat transcript**: the `log.txt` described above.
-
-Before submitting, confirm:
-
-- `output.csv` has one row per row in `dataset/messages.csv`.
-- `output.csv` has the exact required columns in the exact required order.
-- Your runnable code and setup instructions are included in `code.zip`.
+- CORS is open (`allow_origins=["*"]`) on the backend, so any frontend origin can call it.
+- The backend is read-only at request time — no CSV files are written during normal API use, so it's safe to run on ephemeral/serverless-style hosts.
